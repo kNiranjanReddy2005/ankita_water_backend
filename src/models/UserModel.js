@@ -1,37 +1,51 @@
-import { db } from "../data/store.js";
 import { ROLES } from "../constants/roles.js";
+import { getDatabase } from "../data/database.js";
 import { clone, createId } from "../utils/helpers.js";
 import { hashPassword } from "../utils/security.js";
 
 class UserModel {
-  all() {
-    return db.users.map(({ passwordHash, ...user }) => clone(user));
+  async collection() {
+    const database = await getDatabase();
+    return database.collection("users");
   }
 
-  findByEmail(email) {
-    return db.users.find((user) => user.email.toLowerCase() === String(email).toLowerCase()) || null;
+  async ensureIndexes() {
+    await (await this.collection()).createIndex({ email: 1 }, { unique: true });
   }
 
-  findById(id) {
-    return db.users.find((user) => user.id === id) || null;
+  async all() {
+    const users = await (await this.collection()).find({}, { projection: { _id: 0, passwordHash: 0 } }).toArray();
+    return clone(users);
   }
 
-  create(payload) {
+  async findByEmail(email) {
+    return (await this.collection()).findOne(
+      { email: String(email).toLowerCase() },
+      { projection: { _id: 0 } }
+    );
+  }
+
+  async findById(id) {
+    return (await this.collection()).findOne({ id }, { projection: { _id: 0 } });
+  }
+
+  async create(payload) {
     const user = {
       id: createId("user"),
       name: payload.name,
-      email: payload.email,
+      email: String(payload.email).toLowerCase(),
       role: payload.role || ROLES.USER,
       passwordHash: hashPassword(payload.password)
     };
 
-    db.users.push(user);
+    await (await this.collection()).insertOne(user);
     const { passwordHash, ...safeUser } = user;
     return clone(safeUser);
   }
 
-  ensureUser(payload) {
-    const existing = this.findByEmail(payload.email);
+  async ensureUser(payload) {
+    await this.ensureIndexes();
+    const existing = await this.findByEmail(payload.email);
 
     if (existing) {
       const { passwordHash, ...safeUser } = existing;

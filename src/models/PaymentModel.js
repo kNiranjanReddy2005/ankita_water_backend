@@ -1,27 +1,22 @@
-import { db } from "../data/store.js";
-import { clone, createId } from "../utils/helpers.js";
+import { createRecord, getStateValue } from "../data/store.js";
 
 class PaymentModel {
-  all(type) {
+  async all(type) {
     if (!type) {
-      return clone(db.payments);
+      return getStateValue("payments");
     }
 
-    return clone(db.payments[type] || []);
+    return (await getStateValue(`payments.${type}`)) || [];
   }
 
-  create(type, payload) {
-    if (!db.payments[type]) {
+  async create(type, payload) {
+    const payments = await getStateValue("payments");
+
+    if (!payments?.[type]) {
       return null;
     }
 
-    const record = {
-      id: createId(`${type}-payment`),
-      ...payload
-    };
-
-    db.payments[type].unshift(record);
-    return clone(record);
+    return createRecord(`payments.${type}`, `${type}-payment`, payload);
   }
 }
 

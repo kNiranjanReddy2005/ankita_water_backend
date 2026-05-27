@@ -1,25 +1,18 @@
-import { db } from "../data/store.js";
-import { clone, createId } from "../utils/helpers.js";
+import { createRecord, getStateValue } from "../data/store.js";
 
 class LoadModel {
-  all() {
-    return clone(db.loads);
+  async all() {
+    return getStateValue("loads");
   }
 
-  create(direction, payload) {
-    const collection = db.loads[direction];
+  async create(direction, payload) {
+    const loads = await getStateValue("loads");
 
-    if (!collection) {
+    if (!loads?.[direction]) {
       return null;
     }
 
-    const record = {
-      id: createId(`${direction}-load`),
-      ...payload
-    };
-
-    collection.unshift(record);
-    return clone(record);
+    return createRecord(`loads.${direction}`, `${direction}-load`, payload);
   }
 }
 

@@ -1,22 +1,16 @@
-import { db } from "../data/store.js";
-import { clone } from "../utils/helpers.js";
+import { getStateValue, patchStateValue } from "../data/store.js";
 
 class SingletonModel {
   constructor(key) {
     this.key = key;
   }
 
-  get() {
-    return clone(db[this.key]);
+  async get() {
+    return getStateValue(this.key);
   }
 
-  update(payload) {
-    db[this.key] = {
-      ...db[this.key],
-      ...payload
-    };
-
-    return clone(db[this.key]);
+  async update(payload) {
+    return patchStateValue(this.key, payload);
   }
 }
 

@@ -23,5 +23,5 @@ const seededUsers = [
 ];
 
 export function seedAdminUsers() {
-  return seededUsers.map((user) => UserModel.ensureUser(user));
+  return Promise.all(seededUsers.map((user) => UserModel.ensureUser(user)));
 }

@@ -1,5 +1,4 @@
-import { db } from "../data/store.js";
-import { clone, createId } from "../utils/helpers.js";
+import { createRecord, findRecordById, listRecords, removeRecord, updateRecord } from "../data/store.js";
 
 class BaseModel {
   constructor(collectionName, idPrefix) {
@@ -7,53 +6,24 @@ class BaseModel {
     this.idPrefix = idPrefix;
   }
 
-  collection() {
-    return db[this.collectionName];
+  async all() {
+    return listRecords(this.collectionName);
   }
 
-  all() {
-    return clone(this.collection());
+  async findById(id) {
+    return findRecordById(this.collectionName, id);
   }
 
-  findById(id) {
-    return this.collection().find((item) => item.id === id) || null;
+  async create(payload) {
+    return createRecord(this.collectionName, this.idPrefix, payload);
   }
 
-  create(payload) {
-    const record = {
-      id: createId(this.idPrefix),
-      ...payload
-    };
-
-    this.collection().unshift(record);
-    return clone(record);
+  async update(id, payload) {
+    return updateRecord(this.collectionName, id, payload);
   }
 
-  update(id, payload) {
-    const index = this.collection().findIndex((item) => item.id === id);
-
-    if (index === -1) {
-      return null;
-    }
-
-    this.collection()[index] = {
-      ...this.collection()[index],
-      ...payload,
-      id
-    };
-
-    return clone(this.collection()[index]);
-  }
-
-  remove(id) {
-    const index = this.collection().findIndex((item) => item.id === id);
-
-    if (index === -1) {
-      return null;
-    }
-
-    const [removed] = this.collection().splice(index, 1);
-    return clone(removed);
+  async remove(id) {
+    return removeRecord(this.collectionName, id);
   }
 }
 

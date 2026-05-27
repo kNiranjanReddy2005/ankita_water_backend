@@ -1,3 +1,4 @@
+import "dotenv/config";
 import cors from "cors";
 import express from "express";
 import path from "node:path";
@@ -21,6 +22,8 @@ import reportsRoutes from "./routes/reportsRoutes.js";
 import businessRoutes from "./routes/businessRoutes.js";
 import agencyRoutes from "./routes/agencyRoutes.js";
 import usersRoutes from "./routes/usersRoutes.js";
+import { closeDatabaseConnection } from "./data/database.js";
+import { ensureStateSeeded } from "./data/store.js";
 import { seedAdminUsers } from "./seeds/seedAdmin.js";
 
 const app = express();
@@ -28,8 +31,6 @@ const PORT = process.env.PORT || 4000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const clientDistPath = path.resolve(__dirname, "../../client/dist");
-
-seedAdminUsers();
 
 app.use(cors());
 app.use(express.json());
@@ -68,10 +69,27 @@ app.get("*", (req, res, next) => {
   return res.sendFile(path.join(clientDistPath, "index.html"));
 });
 
-app.listen(PORT, () => {
-  console.log(`Water ERP running on http://localhost:${PORT}`);
-  console.log("Seeded users:");
-  console.log("  superadmin@purepani.in / Super@123");
-  console.log("  admin@purepani.in / Admin@123");
-  console.log("  owner@purepani.in / Water@123");
+app.use((error, _req, res, _next) => {
+  console.error(error);
+  res.status(500).json({ message: "Internal server error." });
+});
+
+async function startServer() {
+  await ensureStateSeeded();
+  await seedAdminUsers();
+
+  app.listen(PORT, () => {
+    console.log(`Water ERP running on http://localhost:${PORT}`);
+    console.log("Seeded users:");
+    console.log("  superadmin@purepani.in / Super@123");
+    console.log("  admin@purepani.in / Admin@123");
+    console.log("  owner@purepani.in / Water@123");
+  });
+}
+
+startServer().catch(async (error) => {
+  console.error("Failed to start server.");
+  console.error(error);
+  await closeDatabaseConnection();
+  process.exit(1);
 });
