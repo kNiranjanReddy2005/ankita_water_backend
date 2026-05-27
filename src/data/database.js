@@ -1,7 +1,6 @@
-import { MongoClient } from "mongodb";
+import mongoose from "mongoose";
 
-let clientPromise;
-let databasePromise;
+let connectionPromise;
 
 function getMongoUri() {
   const uri = process.env.MONGODB_URI;
@@ -14,29 +13,36 @@ function getMongoUri() {
 }
 
 function getDatabaseName() {
-  return process.env.MONGODB_DB_NAME;
+  return process.env.MONGODB_DB_NAME || "water_erp";
 }
 
-export async function getDatabase() {
-  if (!databasePromise) {
-    const client = new MongoClient(getMongoUri());
-    clientPromise = client.connect();
-    databasePromise = clientPromise.then((connectedClient) => {
-      const databaseName = getDatabaseName();
-      return databaseName ? connectedClient.db(databaseName) : connectedClient.db();
+export async function connectDatabase() {
+  if (!connectionPromise) {
+    connectionPromise = mongoose.connect(getMongoUri(), {
+      dbName: getDatabaseName()
     });
   }
 
-  return databasePromise;
+  await connectionPromise;
+  return mongoose.connection;
+}
+
+export async function getDatabase() {
+  const connection = await connectDatabase();
+
+  if (!connection.db) {
+    throw new Error("Mongoose connected without an active database handle.");
+  }
+
+  return connection.db;
 }
 
 export async function closeDatabaseConnection() {
-  if (!clientPromise) {
+  if (!connectionPromise) {
     return;
   }
 
-  const client = await clientPromise;
-  await client.close();
-  clientPromise = undefined;
-  databasePromise = undefined;
+  await connectionPromise;
+  await mongoose.disconnect();
+  connectionPromise = undefined;
 }

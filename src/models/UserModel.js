@@ -1,35 +1,49 @@
+import mongoose from "mongoose";
 import { ROLES } from "../constants/roles.js";
-import { getDatabase } from "../data/database.js";
+import { connectDatabase } from "../data/database.js";
 import { clone, createId } from "../utils/helpers.js";
 import { hashPassword } from "../utils/security.js";
 
-class UserModel {
-  async collection() {
-    const database = await getDatabase();
-    return database.collection("users");
+const userSchema = new mongoose.Schema(
+  {
+    id: { type: String, required: true, unique: true },
+    name: { type: String, required: true, trim: true },
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    role: { type: String, required: true, enum: Object.values(ROLES) },
+    passwordHash: { type: String, required: true }
+  },
+  {
+    collection: "users",
+    versionKey: false
   }
+);
 
+const UserRecord = mongoose.models.UserRecord || mongoose.model("UserRecord", userSchema);
+
+class UserModel {
   async ensureIndexes() {
-    await (await this.collection()).createIndex({ email: 1 }, { unique: true });
+    await connectDatabase();
+    await UserRecord.syncIndexes();
   }
 
   async all() {
-    const users = await (await this.collection()).find({}, { projection: { _id: 0, passwordHash: 0 } }).toArray();
+    await connectDatabase();
+    const users = await UserRecord.find({}, { _id: 0, passwordHash: 0 }).lean();
     return clone(users);
   }
 
   async findByEmail(email) {
-    return (await this.collection()).findOne(
-      { email: String(email).toLowerCase() },
-      { projection: { _id: 0 } }
-    );
+    await connectDatabase();
+    return UserRecord.findOne({ email: String(email).toLowerCase() }, { _id: 0 }).lean();
   }
 
   async findById(id) {
-    return (await this.collection()).findOne({ id }, { projection: { _id: 0 } });
+    await connectDatabase();
+    return UserRecord.findOne({ id }, { _id: 0 }).lean();
   }
 
   async create(payload) {
+    await connectDatabase();
     const user = {
       id: createId("user"),
       name: payload.name,
@@ -38,7 +52,7 @@ class UserModel {
       passwordHash: hashPassword(payload.password)
     };
 
-    await (await this.collection()).insertOne(user);
+    await UserRecord.create(user);
     const { passwordHash, ...safeUser } = user;
     return clone(safeUser);
   }

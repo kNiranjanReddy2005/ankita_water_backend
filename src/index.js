@@ -22,7 +22,7 @@ import reportsRoutes from "./routes/reportsRoutes.js";
 import businessRoutes from "./routes/businessRoutes.js";
 import agencyRoutes from "./routes/agencyRoutes.js";
 import usersRoutes from "./routes/usersRoutes.js";
-import { closeDatabaseConnection } from "./data/database.js";
+import { closeDatabaseConnection, connectDatabase } from "./data/database.js";
 import { ensureStateSeeded } from "./data/store.js";
 import { seedAdminUsers } from "./seeds/seedAdmin.js";
 
@@ -75,6 +75,7 @@ app.use((error, _req, res, _next) => {
 });
 
 async function startServer() {
+  await connectDatabase();
   await ensureStateSeeded();
   await seedAdminUsers();
 
